@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fun Mini Arcade</title>
+  <style>
+    * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    body { background: #121212; color: #fff; text-align: center; margin: 0; padding: 20px; }
+    h1 { margin-bottom: 10px; color: #00ffcc; text-shadow: 0 0 10px #00ffcc; }
+    
+    /* Navigation Tabs */
+    .nav { display: flex; justify-content: center; gap: 15px; margin-bottom: 20px; }
+    .tab-btn { background: #222; color: #fff; border: 2px solid #00ffcc; padding: 10px 20px; 
+               border-radius: 20px; cursor: pointer; font-weight: bold; transition: 0.2s; }
+    .tab-btn:hover, .tab-btn.active { background: #00ffcc; color: #121212; }
+
+    /* Game Container */
+    .game-section { display: none; background: #1e1e1e; max-width: 450px; margin: 0 auto; 
+                    padding: 20px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,255,204,0.15); }
+    .game-section.active { display: block; }
+    
+    /* Common UI Elements */
+    .btn { background: #ff007f; color: white; border: none; padding: 8px 16px; 
+           border-radius: 6px; cursor: pointer; font-size: 14px; margin-top: 10px; }
+    .btn:hover { background: #e00070; }
+    .score { font-size: 18px; font-weight: bold; margin-bottom: 10px; color: #00ffcc; }
+
+    /* 1. Snake Game */
+    #snakeCanvas { background: #000; border: 2px solid #333; display: block; margin: 0 auto; }
+
+    /* 2. Tic-Tac-Toe */
+    .ttt-board { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; width: 240px; margin: 0 auto; }
+    .ttt-cell { width: 75px; height: 75px; background: #2a2a2a; border-radius: 8px; font-size: 32px; 
+                display: flex; align-items: center; justify-content: center; cursor: pointer; font-weight: bold; }
+    .ttt-cell:hover { background: #3a3a3a; }
+
+    /* 3. Memory Game */
+    .memory-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; width: 280px; margin: 0 auto; }
+    .memory-card { height: 60px; background: #2a2a2a; font-size: 28px; border-radius: 6px; 
+                   display: flex; align-items: center; justify-content: center; cursor: pointer; }
+    .memory-card.flipped { background: #00ffcc; color: #000; }
+  </style>
+</head>
+<body>
+
+  <h1>🎮 FUN MINI ARCADE 🎮</h1>
+  
+  <div class="nav">
+    <button class="tab-btn active" onclick="switchGame('snake')">🐍 Snake</button>
+    <button class="tab-btn" onclick="switchGame('ttt')">❌ Tic-Tac-Toe</button>
+    <button class="tab-btn" onclick="switchGame('memory')">🃏 Memory Match</button>
+  </div>
+
+  <!-- GAME 1: SNAKE -->
+  <div id="snake" class="game-section active">
+    <h2>Snake Game</h2>
+    <div class="score">Score: <span id="snakeScore">0</span></div>
+    <canvas id="snakeCanvas" width="300" height="300"></canvas>
+    <p><small>Use <strong>Arrow Keys</strong> or <strong>W, A, S, D</strong> to control.</small></p>
+    <button class="btn" onclick="initSnake()">Restart Snake</button>
+  </div>
+
+  <!-- GAME 2: TIC-TAC-TOE -->
+  <div id="ttt" class="game-section">
+    <h2>Tic-Tac-Toe</h2>
+    <div class="score" id="tttStatus">Player X's Turn</div>
+    <div class="ttt-board" id="tttBoard"></div>
+    <button class="btn" onclick="initTTT()">Restart Game</button>
+  </div>
+
+  <!-- GAME 3: MEMORY CARD MATCH -->
+  <div id="memory" class="game-section">
+    <h2>Memory Match</h2>
+    <div class="score">Matches: <span id="memoryScore">0</span> / 4</div>
+    <div class="memory-grid" id="memoryGrid"></div>
+    <button class="btn" onclick="initMemory()">Reset Cards</button>
+  </div>
+
+  <script>
+    // Tab Switcher
+    function switchGame(gameId) {
+      document.querySelectorAll('.game-section').forEach(el => el.classList.remove('active'));
+      document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+      document.getElementById(gameId).classList.add('active');
+      event.target.classList.add('active');
+      
+      if (gameId === 'snake') initSnake();
+      if (gameId === 'ttt') initTTT();
+      if (gameId === 'memory') initMemory();
+    }
+
+    /* ---------------- 1. SNAKE GAME ---------------- */
+    const canvas = document.getElementById('snakeCanvas');
+    const ctx = canvas.getContext('2d');
+    let snake, dir, food, snakeScore, snakeGameLoop;
+
+    function initSnake() {
+      clearInterval(snakeGameLoop);
+      snake = [{x: 10, y: 10}];
+      dir = {x: 1, y: 0};
+      snakeScore = 0;
+      document.getElementById('snakeScore').innerText = snakeScore;
+      placeFood();
+      snakeGameLoop = setInterval(updateSnake, 120);
+    }
+
+    function placeFood() {
+      food = { x: Math.floor(Math.random() * 15), y: Math.floor(Math.random() * 15) };
+    }
+
+    function updateSnake() {
+      const head = { x: snake[0].x + dir.x, y: snake[0].y + dir.y };
+
+      // Collision checks
+      if (head.x < 0 || head.x >= 15 || head.y < 0 || head.y >= 15 || 
+          snake.some(segment => segment.x === head.x && segment.y === head.y)) {
+        clearInterval(snakeGameLoop);
+        alert('Game Over! Your Score: ' + snakeScore);
+        return;
+      }
+
+      snake.unshift(head);
+
+      if (head.x === food.x && head.y === food.y) {
+        snakeScore += 10;
+        document.getElementById('snakeScore').innerText = snakeScore;
+        placeFood();
+      } else {
+        snake.pop();
+      }
+
+      // Render
+      ctx.fillStyle = '#000';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      ctx.fillStyle = '#ff007f';
+      ctx.fillRect(food.x * 20, food.y * 20, 18, 18);
+
+      ctx.fillStyle = '#00ffcc';
+      snake.forEach(s => ctx.fillRect(s.x * 20, s.y * 20, 18, 18));
+    }
+
+    window.addEventListener('keydown', e => {
+      if (['ArrowUp', 'w', 'W'].includes(e.key) && dir.y === 0) dir = {x: 0, y: -1};
+      if (['ArrowDown', 's', 'S'].includes(e.key) && dir.y === 0) dir = {x: 0, y: 1};
+      if (['ArrowLeft', 'a', 'A'].includes(e.key) && dir.x === 0) dir = {x: -1, y: 0};
+      if (['ArrowRight', 'd', 'D'].includes(e.key) && dir.x === 0) dir = {x: 1, y: 0};
+    });
+
+    /* ---------------- 2. TIC-TAC-TOE ---------------- */
+    let tttBoardState, currentPlayer, tttActive;
+
+    function initTTT() {
+      tttBoardState = ['', '', '', '', '', '', '', '', ''];
+      currentPlayer = 'X';
+      tttActive = true;
+      document.getElementById('tttStatus').innerText = `Player X's Turn`;
+      
+      const boardContainer = document.getElementById('tttBoard');
+      boardContainer.innerHTML = '';
+      for (let i = 0; i < 9; i++) {
+        const cell = document.createElement('div');
+        cell.classList.add('ttt-cell');
+        cell.addEventListener('click', () => makeTTTMove(i));
+        boardContainer.appendChild(cell);
+      }
+    }
+
+    function makeTTTMove(index) {
+      if (!tttActive || tttBoardState[index] !== '') return;
+      
+      tttBoardState[index] = currentPlayer;
+      const cells = document.querySelectorAll('.ttt-cell');
+      cells[index].innerText = currentPlayer;
+      cells[index].style.color = currentPlayer === 'X' ? '#00ffcc' : '#ff007f';
+
+      if (checkTTTWin()) {
+        document.getElementById('tttStatus').innerText = `Player ${currentPlayer} Wins! 🎉`;
+        tttActive = false;
+        return;
+      }
+
+      if (!tttBoardState.includes('')) {
+        document.getElementById('tttStatus').innerText = `It's a Draw!`;
+        tttActive = false;
+        return;
+      }
+
+      currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
+      document.getElementById('tttStatus').innerText = `Player ${currentPlayer}'s Turn`;
+    }
+
+    function checkTTTWin() {
+      const wins = [[0,1,2], [3,4,5], [6,7,8], [0,3,6], [1,4,7], [2,5,8], [0,4,8], [2,4,6]];
+      return wins.some(comb => comb.every(i => tttBoardState[i] === currentPlayer));
+    }
+
+    /* ---------------- 3. MEMORY MATCH ---------------- */
+    const icons = ['🚀', '👾', '🍕', '🐱', '🚀', '👾', '🍕', '🐱'];
+    let flippedCards = [], matchedMatches = 0;
+
+    function initMemory() {
+      matchedMatches = 0;
+      flippedCards = [];
+      document.getElementById('memoryScore').innerText = 0;
+      
+      const shuffled = [...icons].sort(() => 0.5 - Math.random());
+      const grid = document.getElementById('memoryGrid');
+      grid.innerHTML = '';
+
+      shuffled.forEach((icon) => {
+        const card = document.createElement('div');
+        card.classList.add('memory-card');
+        card.dataset.icon = icon;
+        card.innerText = '❓';
+        card.addEventListener('click', () => flipCard(card));
+        grid.appendChild(card);
+      });
+    }
+
+    function flipCard(card) {
+      if (flippedCards.length === 2 || card.classList.contains('flipped')) return;
+
+      card.classList.add('flipped');
+      card.innerText = card.dataset.icon;
+      flippedCards.push(card);
+
+      if (flippedCards.length === 2) {
+        if (flippedCards[0].dataset.icon === flippedCards[1].dataset.icon) {
+          matchedMatches++;
+          document.getElementById('memoryScore').innerText = matchedMatches;
+          flippedCards = [];
+          if (matchedMatches === 4) setTimeout(() => alert('You matched all cards! 🎉'), 200);
+        } else {
+          setTimeout(() => {
+            flippedCards.forEach(c => { c.classList.remove('flipped'); c.innerText = '❓'; });
+            flippedCards = [];
+          }, 800);
+        }
+      }
+    }
+
+    // Initialize default game
+    initSnake();
+  </script>
+
+</body>
+</html>
